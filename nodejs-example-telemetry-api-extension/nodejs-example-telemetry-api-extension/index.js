@@ -34,44 +34,19 @@ const telemetryDispatcher = require('./telemetry-dispatcher');
 
     // Step 2 - Start the local http listener which will receive data from Telemetry API
     console.log('[index:main] Starting the telemetry listener');
-    const listenerUri = telemetryListener.start();
+    const listenerUri = telemetryListener.start(extensionId);
     console.log('[index:main] Telemetry listener started at', listenerUri);
 
     // Step 3 - Subscribe the listener to Telemetry API 
     console.log('[index:main] Subscribing the telemetry listener to Telemetry API');
     await telemetryApi.subscribe(extensionId, listenerUri);
     console.log('[index:main] Subscription success');
+    console.log('[index:main] Extension and telemetry registration done');
 
-    while (true) {
-        console.log('[index:main] Next');
+    // while (true) {
+    console.log('[index:main] Next. No loop here, just a single event');
 
-        // This is a blocking action
-        const event = await extensionsApi.next(extensionId);
+    await extensionsApi.runExtensionEventLoopOnce(extensionId);
 
-        switch (event.eventType) {
-            case 'INVOKE':
-                handleInvoke(event);
-                await telemetryDispatcher.dispatch(telemetryListener.eventsQueue, false); 
-                break;
-            case 'SHUTDOWN':
-                // Wait for 1 sec to receive remaining events
-                await new Promise((resolve, reject)=>{setTimeout(resolve, 1000)}); 
-
-                // Dispatch queued telemetry prior to handling the shutdown event
-                await telemetryDispatcher.dispatch(telemetryListener.eventsQueue, true); 
-                handleShutdown(event);
-                break;
-            default:
-                throw new Error('[index:main] unknown event: ' + event);
-        }
-    }
+    // }
 })();
-
-function handleShutdown(event) {
-    console.log('[index:handleShutdown]');
-    process.exit(0);
-}
-
-function handleInvoke(event) {
-    console.log('[index:handleInvoke]');
-}

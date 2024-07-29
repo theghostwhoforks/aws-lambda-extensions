@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT-0
 
 const fetch = require('node-fetch');
-const {basename} = require('path');
+const { basename } = require('path');
 
 const baseUrl = `http://${process.env.AWS_LAMBDA_RUNTIME_API}/2020-01-01/extension`;
 
@@ -52,7 +52,39 @@ async function next(extensionId) {
     }
 }
 
+async function runExtensionEventLoopOnce(extensionId) {
+    // This is a blocking action
+    const event = await next(extensionId);
+
+    switch (event.eventType) {
+        case 'INVOKE':
+            handleInvoke(event)
+            break;
+        case 'SHUTDOWN':
+            // Wait for 1 sec to receive remaining events. Can be a smaller duration, potentially.
+            // this is not required now.
+            await new Promise((resolve, reject) => { setTimeout(resolve, 100) });
+
+            handleShutdown(event);
+            console.log('[index:handleShutdown] process exit');
+            process.exit(0);
+            break;
+        default:
+            throw new Error('[index:main] unknown event: ' + event);
+    }
+}
+function handleShutdown(event) {
+    console.log('[index:handleShutdown]', event);
+    process.exit(0);
+}
+
+function handleInvoke(event) {
+    console.log('[index:handleInvoke]', event);
+}
+
+
 module.exports = {
     register,
     next,
+    runExtensionEventLoopOnce,
 };
